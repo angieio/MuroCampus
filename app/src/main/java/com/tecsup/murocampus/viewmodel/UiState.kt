@@ -1,8 +1,8 @@
 package com.tecsup.murocampus.viewmodel
 
-import android.net.http.HttpException
 import java.io.IOException
 import kotlinx.serialization.SerializationException
+import retrofit2.HttpException
 
 sealed interface UiState<out T> {
     data object Cargando : UiState<Nothing>

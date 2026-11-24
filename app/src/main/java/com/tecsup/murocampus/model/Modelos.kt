@@ -1,6 +1,7 @@
 package com.tecsup.murocampus.model
 
 import kotlinx.serialization.Serializable
+import retrofit2.http.GET
 import kotlin.coroutines.cancellation.CancellationException
 
 @Serializable

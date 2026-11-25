@@ -9,6 +9,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -19,6 +20,10 @@ class PostsViewModel(private val repo: PostRepository) : ViewModel() {
     private val _lista = MutableStateFlow<UiState<List<Post>>>(UiState.Cargando)
     val lista = _lista.asStateFlow()
 
+    private val _usuarioFiltro = MutableStateFlow<Int?>(null)
+    val usuarioFiltro = _usuarioFiltro.asStateFlow()
+    private var cargaLista: Job? = null
+
     private val _detalle = MutableStateFlow<UiState<DetalleUi>>(UiState.Cargando)
     val detalle = _detalle.asStateFlow()
     private var cargaDetalle: Job? = null
@@ -27,10 +32,20 @@ class PostsViewModel(private val repo: PostRepository) : ViewModel() {
         cargar()
     }
 
+    fun filtrar(userId: Int?) {
+        if (_usuarioFiltro.value == userId) return
+        _usuarioFiltro.value = userId
+        cargar()
+    }
+
     fun cargar() {
-        viewModelScope.launch {
-            _lista.value = UiState.Cargando
-            repo.listar()
+        cargaLista?.cancel()
+        val userId = _usuarioFiltro.value
+        _lista.value = UiState.Cargando
+        cargaLista = viewModelScope.launch {
+            val resultado = if (userId == null) repo.listar() else repo.porUsuario(userId)
+            ensureActive()
+            resultado
                 .onSuccess { _lista.value = UiState.Exito(it) }
                 .onFailure { _lista.value = UiState.Error(mensajeDe(it)) }
         }

@@ -17,6 +17,8 @@ import kotlinx.coroutines.launch
 
 data class DetalleUi(val post: Post, val comentarios: List<Comentario>)
 
+data class EliminacionUi(val postId: Int, val estado: UiState<Unit>)
+
 class PostsViewModel(private val repo: PostRepository) : ViewModel() {
     private val _lista = MutableStateFlow<UiState<List<Post>>>(UiState.Cargando)
     val lista = _lista.asStateFlow()
@@ -34,6 +36,10 @@ class PostsViewModel(private val repo: PostRepository) : ViewModel() {
 
     private val _publicacion = MutableStateFlow<UiState<Post>?>(null)
     val publicacion = _publicacion.asStateFlow()
+
+    private val idsEliminados = mutableSetOf<Int>()
+    private val _eliminacion = MutableStateFlow<EliminacionUi?>(null)
+    val eliminacion = _eliminacion.asStateFlow()
 
     init {
         cargar()
@@ -57,7 +63,7 @@ class PostsViewModel(private val repo: PostRepository) : ViewModel() {
             val resultado = if (userId == null) repo.listar() else repo.porUsuario(userId)
             ensureActive()
             resultado
-                .onSuccess { _lista.value = UiState.Exito(it) }
+                .onSuccess { posts -> _lista.value = UiState.Exito(posts.filterNot { it.id in idsEliminados }) }
                 .onFailure { _lista.value = UiState.Error(mensajeDe(it)) }
         }
     }
@@ -95,6 +101,30 @@ class PostsViewModel(private val repo: PostRepository) : ViewModel() {
             repo.crear(NuevoPost(userId = 1, title = titulo, body = texto))
                 .onSuccess { _publicacion.value = UiState.Exito(it) }
                 .onFailure { _publicacion.value = UiState.Error(mensajeDe(it)) }
+        }
+    }
+
+    fun consumirEliminacion(id: Int) {
+        val actual = _eliminacion.value
+        if (actual?.postId == id && actual.estado is UiState.Exito) {
+            _eliminacion.value = null
+        }
+    }
+
+    fun eliminar(id: Int) {
+        if (_eliminacion.value?.estado == UiState.Cargando) return
+        _eliminacion.value = EliminacionUi(id, UiState.Cargando)
+        viewModelScope.launch {
+            repo.eliminar(id)
+                .onSuccess {
+                    idsEliminados.add(id)
+                    val actual = _lista.value
+                    if (actual is UiState.Exito) {
+                        _lista.value = UiState.Exito(actual.datos.filterNot { it.id == id })
+                    }
+                    _eliminacion.value = EliminacionUi(id, UiState.Exito(Unit))
+                }
+                .onFailure { _eliminacion.value = EliminacionUi(id, UiState.Error(mensajeDe(it))) }
         }
     }
 }

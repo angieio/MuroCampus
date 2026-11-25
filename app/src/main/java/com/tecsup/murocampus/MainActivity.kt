@@ -12,6 +12,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -19,6 +21,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
@@ -34,6 +38,7 @@ import com.tecsup.murocampus.ui.PantallaLista
 import com.tecsup.murocampus.ui.theme.MuroCampusTheme
 import com.tecsup.murocampus.viewmodel.PostsViewModel
 import com.tecsup.murocampus.viewmodel.PostsViewModelFactory
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val vm: PostsViewModel by viewModels {
@@ -58,6 +63,8 @@ private fun MuroCampusApp(vm: PostsViewModel) {
     var idSeleccionado by rememberSaveable { mutableStateOf<Int?>(null) }
     var creando by rememberSaveable { mutableStateOf(false) }
     val estadoPantallas = rememberSaveableStateHolder()
+    val mensajes = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     val id = idSeleccionado
     BackHandler(enabled = creando || id != null) {
         if (creando) creando = false else idSeleccionado = null
@@ -67,6 +74,7 @@ private fun MuroCampusApp(vm: PostsViewModel) {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = colors.background,
+        snackbarHost = { SnackbarHost(mensajes) },
         floatingActionButton = {
             if (!creando && id == null) {
                 FloatingActionButton(
@@ -106,7 +114,15 @@ private fun MuroCampusApp(vm: PostsViewModel) {
             }
         } else {
             LaunchedEffect(id) { vm.abrir(id) }
-            PantallaDetalle(vm, id, modifier = contenido)
+            PantallaDetalle(
+                vm,
+                id,
+                onEliminado = {
+                    idSeleccionado = null
+                    scope.launch { mensajes.showSnackbar("Publicación eliminada de la lista") }
+                },
+                modifier = contenido
+            )
         }
     }
 }

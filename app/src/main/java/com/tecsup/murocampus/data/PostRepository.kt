@@ -5,6 +5,9 @@ import com.tecsup.murocampus.model.Comentario
 import com.tecsup.murocampus.model.NuevoPost
 import com.tecsup.murocampus.model.Post
 import kotlin.coroutines.cancellation.CancellationException
+import retrofit2.HttpException
+
+class ErrorServidor(val codigo: Int, causa: Throwable) : Exception(causa)
 
 interface PostRepository {
     suspend fun listar(): Result<List<Post>>
@@ -32,6 +35,8 @@ class PostRepositoryRemote(private val api: PostApi) : PostRepository {
             Result.success(bloque())
         } catch (e: CancellationException) {
             throw e
+        } catch (e: HttpException) {
+            Result.failure(ErrorServidor(e.code(), e))
         } catch (e: Exception) {
             Result.failure(e)
         }

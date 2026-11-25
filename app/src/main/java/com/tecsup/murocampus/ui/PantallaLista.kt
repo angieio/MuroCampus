@@ -13,9 +13,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -27,11 +29,12 @@ import com.tecsup.murocampus.viewmodel.UiState
 fun PantallaLista(vm: PostsViewModel, onAbrirPost: (Int) -> Unit, modifier: Modifier = Modifier) {
     val estado by vm.lista.collectAsStateWithLifecycle()
     val usuarioFiltro by vm.usuarioFiltro.collectAsStateWithLifecycle()
+    val searchQuery by vm.searchQuery.collectAsStateWithLifecycle()
     val colors = MaterialTheme.colorScheme
 
     Column(modifier.fillMaxSize()) {
         LazyRow(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
             contentPadding = PaddingValues(horizontal = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -54,6 +57,16 @@ fun PantallaLista(vm: PostsViewModel, onAbrirPost: (Int) -> Unit, modifier: Modi
             }
         }
 
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { vm.onSearchQueryChanged(it) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+            placeholder = { Text("Buscar por título...") },
+            singleLine = true
+        )
+
         Box(
             modifier = Modifier.weight(1f).fillMaxWidth(),
             contentAlignment = Alignment.Center
@@ -68,15 +81,22 @@ fun PantallaLista(vm: PostsViewModel, onAbrirPost: (Int) -> Unit, modifier: Modi
                 )
 
                 is UiState.Exito -> {
+                    val postsFiltrados = remember(actual.datos, searchQuery) {
+                        if (searchQuery.isBlank()) actual.datos
+                        else actual.datos.filter { it.title.contains(searchQuery, ignoreCase = true) }
+                    }
+
                     if (actual.datos.isEmpty()) {
                         Text("Sin publicaciones")
+                    } else if (postsFiltrados.isEmpty()) {
+                        Text("No se encontraron resultados")
                     } else {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            items(actual.datos, key = { it.id }) { post ->
+                            items(postsFiltrados, key = { it.id }) { post ->
                                 TarjetaPost(
                                     userId = post.userId,
                                     title = post.title,

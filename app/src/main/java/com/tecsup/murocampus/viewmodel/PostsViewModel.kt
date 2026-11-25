@@ -25,6 +25,9 @@ class PostsViewModel(private val repo: PostRepository) : ViewModel() {
     val usuarioFiltro = _usuarioFiltro.asStateFlow()
     private var cargaLista: Job? = null
 
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery = _searchQuery.asStateFlow()
+
     private val _detalle = MutableStateFlow<UiState<DetalleUi>>(UiState.Cargando)
     val detalle = _detalle.asStateFlow()
     private var cargaDetalle: Job? = null
@@ -40,6 +43,10 @@ class PostsViewModel(private val repo: PostRepository) : ViewModel() {
         if (_usuarioFiltro.value == userId) return
         _usuarioFiltro.value = userId
         cargar()
+    }
+
+    fun onSearchQueryChanged(query: String) {
+        _searchQuery.value = query
     }
 
     fun cargar() {

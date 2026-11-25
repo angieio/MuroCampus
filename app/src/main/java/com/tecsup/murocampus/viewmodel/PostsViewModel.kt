@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tecsup.murocampus.data.PostRepository
 import com.tecsup.murocampus.model.Comentario
+import com.tecsup.murocampus.model.NuevoPost
 import com.tecsup.murocampus.model.Post
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -27,6 +28,9 @@ class PostsViewModel(private val repo: PostRepository) : ViewModel() {
     private val _detalle = MutableStateFlow<UiState<DetalleUi>>(UiState.Cargando)
     val detalle = _detalle.asStateFlow()
     private var cargaDetalle: Job? = null
+
+    private val _publicacion = MutableStateFlow<UiState<Post>?>(null)
+    val publicacion = _publicacion.asStateFlow()
 
     init {
         cargar()
@@ -67,6 +71,23 @@ class PostsViewModel(private val repo: PostRepository) : ViewModel() {
             } catch (e: Exception) {
                 _detalle.value = UiState.Error(mensajeDe(e))
             }
+        }
+    }
+
+    fun prepararPublicacion() {
+        if (_publicacion.value != UiState.Cargando) {
+            _publicacion.value = null
+        }
+    }
+
+    fun publicar(titulo: String, texto: String) {
+        if (titulo.isBlank() || texto.isBlank() || _publicacion.value == UiState.Cargando) return
+
+        _publicacion.value = UiState.Cargando
+        viewModelScope.launch {
+            repo.crear(NuevoPost(userId = 1, title = titulo, body = texto))
+                .onSuccess { _publicacion.value = UiState.Exito(it) }
+                .onFailure { _publicacion.value = UiState.Error(mensajeDe(it)) }
         }
     }
 }

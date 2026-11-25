@@ -9,6 +9,7 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -23,8 +24,11 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import com.tecsup.murocampus.data.PostRepositoryRemote
 import com.tecsup.murocampus.data.remote.RetrofitClient
+import com.tecsup.murocampus.ui.PantallaCrear
 import com.tecsup.murocampus.ui.PantallaDetalle
 import com.tecsup.murocampus.ui.PantallaLista
 import com.tecsup.murocampus.ui.theme.MuroCampusTheme
@@ -52,14 +56,32 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun MuroCampusApp(vm: PostsViewModel) {
     var idSeleccionado by rememberSaveable { mutableStateOf<Int?>(null) }
+    var creando by rememberSaveable { mutableStateOf(false) }
     val estadoPantallas = rememberSaveableStateHolder()
     val id = idSeleccionado
-    BackHandler(enabled = id != null) { idSeleccionado = null }
+    BackHandler(enabled = creando || id != null) {
+        if (creando) creando = false else idSeleccionado = null
+    }
 
     val colors = MaterialTheme.colorScheme
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = colors.background,
+        floatingActionButton = {
+            if (!creando && id == null) {
+                FloatingActionButton(
+                    onClick = {
+                        vm.prepararPublicacion()
+                        creando = true
+                    },
+                    modifier = Modifier.semantics { contentDescription = "Crear publicación" },
+                    containerColor = colors.primary,
+                    contentColor = colors.onPrimary
+                ) {
+                    Text("+", style = MaterialTheme.typography.headlineSmall)
+                }
+            }
+        },
         topBar = {
             TopAppBar(
                 title = {
@@ -76,7 +98,9 @@ private fun MuroCampusApp(vm: PostsViewModel) {
         }
     ) { padding ->
         val contenido = Modifier.padding(padding)
-        if (id == null) {
+        if (creando) {
+            PantallaCrear(vm, modifier = contenido)
+        } else if (id == null) {
             estadoPantallas.SaveableStateProvider("lista") {
                 PantallaLista(vm, onAbrirPost = { idSeleccionado = it }, modifier = contenido)
             }
